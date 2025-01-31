@@ -1,4 +1,4 @@
-<h1 align="center" id="title">Telegram Messages Forwarder Bot</h1>
+<h1 align="left" id="title">Telegram Messages Forwarder Bot</h1>
 
 <p id="description">A bot that monitors Telegram channels analyzes messages using NLP and forwards relevant content to target users or channels. Supports text and media albums with keyword filtering and Cohere API integration for smart content curation.</p>
 
