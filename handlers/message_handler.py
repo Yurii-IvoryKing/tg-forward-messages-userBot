@@ -9,7 +9,7 @@ nlp_processor = NLPProcessor()
 
 async def setup_handlers(client):
     try:
-        # Отримуємо entity для каналів-джерел
+
         source_channels = []
         for entity in SOURCE_CHANNEL_IDS:
             try:
@@ -21,7 +21,6 @@ async def setup_handlers(client):
             except Exception as e:
                 print(f"❌ Помилка отримання каналу {entity}: {str(e)}")
 
-        # Отримуємо entity для цільових користувачів/каналів
         target_users = []
         for entity in TARGET_USER_IDS:
             try:
@@ -47,24 +46,18 @@ async def setup_handlers(client):
         async def single_message_handler(event):
             try:
                 text = event.raw_text
-                print(f"🔔 Нове повідомлення: {text[:50]}...")
-
-                # Перевірка ключових слів
                 has_keywords = nlp_processor.check_keywords(text)
-                print(f"🔍 Ключові слова: {'✅' if has_keywords else '❌'}")
+
                 if not has_keywords:
                     return
 
-                # Перевірка через Cohere
                 is_interesting = await nlp_processor.is_interesting(text)
-                print(f"🤖 Cohere: {'✅' if is_interesting else '❌'}")
                 if not is_interesting:
                     return
 
                 # Пересилання всім цільовим користувачам/каналам
                 for target_user in target_users:
                     await event.forward_to(target_user)
-                    print(f"✅ Повідомлення переслано до {target_user.id}!")
 
             except Exception as e:
                 print(f"❌ Помилка: {str(e)}")
@@ -78,19 +71,15 @@ async def setup_handlers(client):
                 if not text:
                     return
 
-                # Перевірка ключових слів
                 has_keywords = nlp_processor.check_keywords(text)
-                print(f"🔍 Ключові слова: {'✅' if has_keywords else '❌'}")
                 if not has_keywords:
                     return
 
-                # Перевірка через Cohere
                 is_interesting = await nlp_processor.is_interesting(text)
-                print(f"🤖 Cohere: {'✅' if is_interesting else '❌'}")
                 if not is_interesting:
                     return
 
-                # Пересилання всім цільовим користувачам/каналам
+                # Пересилання всім цільовим користувачам
                 for target_user in target_users:
                     await client.forward_messages(
                         target_user,
