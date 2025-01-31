@@ -1,0 +1,107 @@
+from telethon import events
+from services.nlp_processor import NLPProcessor
+from config.settings import SOURCE_CHANNEL_IDS, TARGET_USER_IDS
+import os
+import asyncio
+
+nlp_processor = NLPProcessor()
+
+
+async def setup_handlers(client):
+    try:
+        # Отримуємо entity для каналів-джерел
+        source_channels = []
+        for entity in SOURCE_CHANNEL_IDS:
+            try:
+                channel = await client.get_entity(entity)
+                source_channels.append(channel)
+                print(
+                    f"✅ Канал додано: {channel.title if hasattr(channel, 'title') else channel.id}"
+                )
+            except Exception as e:
+                print(f"❌ Помилка отримання каналу {entity}: {str(e)}")
+
+        # Отримуємо entity для цільових користувачів/каналів
+        target_users = []
+        for entity in TARGET_USER_IDS:
+            try:
+                user = await client.get_entity(entity)
+                target_users.append(user)
+                print(f"✅ Цільовий користувач/канал додано: {user.id}")
+            except Exception as e:
+                print(
+                    f"❌ Помилка отримання цільового користувача/каналу {entity}: {str(e)}"
+                )
+
+        # Якщо немає каналів або цільових користувачів, зупиняємо бота
+        if not source_channels or not target_users:
+            print("❌ Немає каналів-джерел або цільових користувачів. Бот зупинено.")
+            return
+
+        # Обробка звичайних повідомлень (без альбомів)
+        @client.on(
+            events.NewMessage(
+                chats=source_channels, func=lambda e: not e.message.grouped_id
+            )
+        )
+        async def single_message_handler(event):
+            try:
+                text = event.raw_text
+                print(f"🔔 Нове повідомлення: {text[:50]}...")
+
+                # Перевірка ключових слів
+                has_keywords = nlp_processor.check_keywords(text)
+                print(f"🔍 Ключові слова: {'✅' if has_keywords else '❌'}")
+                if not has_keywords:
+                    return
+
+                # Перевірка через Cohere
+                is_interesting = await nlp_processor.is_interesting(text)
+                print(f"🤖 Cohere: {'✅' if is_interesting else '❌'}")
+                if not is_interesting:
+                    return
+
+                # Пересилання всім цільовим користувачам/каналам
+                for target_user in target_users:
+                    await event.forward_to(target_user)
+                    print(f"✅ Повідомлення переслано до {target_user.id}!")
+
+            except Exception as e:
+                print(f"❌ Помилка: {str(e)}")
+
+        # Обробка альбомів (групових повідомлень)
+        @client.on(events.Album(chats=source_channels))
+        async def album_handler(event):
+            try:
+                # Отримуємо текст з першого повідомлення альбому
+                text = event.messages[0].raw_text if event.messages else ""
+                if not text:
+                    return
+
+                # Перевірка ключових слів
+                has_keywords = nlp_processor.check_keywords(text)
+                print(f"🔍 Ключові слова: {'✅' if has_keywords else '❌'}")
+                if not has_keywords:
+                    return
+
+                # Перевірка через Cohere
+                is_interesting = await nlp_processor.is_interesting(text)
+                print(f"🤖 Cohere: {'✅' if is_interesting else '❌'}")
+                if not is_interesting:
+                    return
+
+                # Пересилання всім цільовим користувачам/каналам
+                for target_user in target_users:
+                    await client.forward_messages(
+                        target_user,
+                        event.messages,
+                        from_peer=event.chat_id,
+                        as_album=True,
+                    )
+                    print(f"✅ Альбом переслано до {target_user.id}!")
+
+            except Exception as e:
+                print(f"❌ Помилка: {str(e)}")
+
+    except Exception as e:
+        print(f"❌ Помилка ініціалізації: {str(e)}")
