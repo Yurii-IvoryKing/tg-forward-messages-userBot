@@ -1,5 +1,12 @@
 __pycache__/
+config/__pycache__/
+handlers/__pycache__/
+services/__pycache__/
 .venv/
 .vscode/
 .env
 ipr_zhid.py
+README.md
+userbot_session.session
+
+.gitignore
